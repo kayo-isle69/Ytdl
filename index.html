@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>YTDL</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #222;
+    --accent: #e8ff47;
+    --accent2: #ff4757;
+    --text: #e0e0e0;
+    --muted: #555;
+    --green: #39ff14;
+    --font: 'JetBrains Mono', monospace;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 80px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .header {
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 40px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(28px, 8vw, 48px);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -2px;
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(232,255,71,0.4);
+  }
+
+  .logo span { color: var(--accent2); }
+
+  .tagline {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  #lockScreen {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .lock-title {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  #tokenInput {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    caret-color: var(--accent);
+    transition: border-color 0.2s;
+  }
+
+  #tokenInput:focus { border-color: var(--accent); }
+
+  .lock-error { font-size: 11px; color: var(--accent2); display: none; }
+
+  .unlock-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 3px;
+    padding: 14px;
+    color: #0a0a0a;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  #appScreen { width: 100%; display: none; flex-direction: column; align-items: center; gap: 20px; }
+  #appScreen.visible { display: flex; }
+
+  .card {
+    width: 100%;
+    max-width: 640px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; }
+  .dot.y { background: #febc2e; }
+  .dot.g { background: #28c840; }
+
+  .card-title { font-size: 11px; color: var(--muted); margin-left: 6px; letter-spacing: 0.08em; }
+
+  .card-body { padding: 24px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  .field-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
+  }
+
+  .url-input {
+    width: 100%;
+    background: #0a0a0a;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    caret-color: var(--accent);
+  }
+
+  .url-input::placeholder { color: #333; }
+  .url-input:focus { border-color: var(--accent); }
+
+  .format-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+  .fmt-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .fmt-btn:hover { border-color: #444; color: var(--text); }
+  .fmt-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.05); }
+  .fmt-hint { font-size: 10px; color: #333; display: block; margin-top: 3px; font-weight: 400; }
+
+  .download-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 3px;
+    padding: 16px;
+    color: #0a0a0a;
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .download-btn:hover { opacity: 0.9; }
+  .download-btn:active { transform: scale(0.99); }
+  .download-btn:disabled { background: #222; color: var(--muted); cursor: not-allowed; transform: none; }
+
+  .terminal {
+    width: 100%;
+    max-width: 640px;
+    background: #050505;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    display: none;
+  }
+
+  .terminal.visible { display: block; }
+
+  .term-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .term-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  .status-badge { font-size: 10px; padding: 2px 8px; border-radius: 2px; font-weight: 700; letter-spacing: 0.08em; }
+  .status-badge.running { color: var(--accent); background: rgba(232,255,71,0.08); }
+  .status-badge.done    { color: var(--green);  background: rgba(57,255,20,0.08); }
+  .status-badge.error   { color: var(--accent2); background: rgba(255,71,87,0.08); }
+
+  .term-body {
+    padding: 16px;
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.7;
+    color: #888;
+  }
+
+  .term-body::-webkit-scrollbar { width: 4px; }
+  .term-body::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  .log-line { white-space: pre-wrap; word-break: break-all; }
+  .log-line.progress { color: var(--accent); }
+  .log-line.success  { color: var(--green); }
+  .log-line.err      { color: var(--accent2); }
+
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 13px;
+    background: var(--accent);
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .dl-ready {
+    width: 100%;
+    max-width: 640px;
+    background: rgba(57,255,20,0.04);
+    border: 1px solid rgba(57,255,20,0.2);
+    border-radius: 4px;
+    padding: 20px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .dl-ready.visible { display: flex; }
+  .dl-ready-title { font-size: 10px; color: var(--green); text-transform: uppercase; letter-spacing: 0.12em; }
+  .dl-filename { font-size: 12px; color: var(--text); word-break: break-all; }
+
+  .dl-link-btn {
+    display: block;
+    width: 100%;
+    background: var(--green);
+    border: none;
+    border-radius: 3px;
+    padding: 14px;
+    color: #0a0a0a;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+
+  .dl-link-btn:hover { opacity: 0.85; }
+  .dl-note { font-size: 10px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">YT<span>DL</span></div>
+  <div class="tagline">cloud downloader</div>
+</div>
+
+<div id="lockScreen">
+  <div class="lock-title">Access Token</div>
+  <input type="password" id="tokenInput" placeholder="Enter your token..." autocomplete="off" />
+  <div class="lock-error" id="lockError">Wrong token. Try again.</div>
+  <button class="unlock-btn" onclick="unlock()">UNLOCK</button>
+</div>
+
+<div id="appScreen">
+  <div class="card">
+    <div class="card-header">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <span class="card-title">new download</span>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="field-label">URL</div>
+        <input class="url-input" id="urlInput" type="url"
+          placeholder="https://youtube.com/watch?v=..."
+          autocomplete="off" autocorrect="off" spellcheck="false" />
+      </div>
+
+      <div>
+        <div class="field-label">Format</div>
+        <div class="format-row">
+          <button class="fmt-btn" data-fmt="mp3" onclick="selectFmt(this)">MP3<span class="fmt-hint">audio only</span></button>
+          <button class="fmt-btn" data-fmt="mp4" onclick="selectFmt(this)">MP4<span class="fmt-hint">video + audio</span></button>
+          <button class="fmt-btn active" data-fmt="best" onclick="selectFmt(this)">BEST<span class="fmt-hint">auto quality</span></button>
+        </div>
+      </div>
+
+      <button class="download-btn" id="dlBtn" onclick="startDownload()">▶ &nbsp; Download</button>
+    </div>
+  </div>
+
+  <div class="terminal" id="terminal">
+    <div class="term-header">
+      <span class="term-title">output</span>
+      <span class="status-badge running" id="statusBadge">RUNNING</span>
+    </div>
+    <div class="term-body" id="termBody"><span class="cursor"></span></div>
+  </div>
+
+  <div class="dl-ready" id="dlReady">
+    <div class="dl-ready-title">✓ Ready to download</div>
+    <div class="dl-filename" id="dlFilename"></div>
+    <a class="dl-link-btn" id="dlLink" href="#">⬇ &nbsp; Save File</a>
+    <div class="dl-note">File is served directly from the server</div>
+  </div>
+</div>
+
+<script>
+  let ACCESS_TOKEN = sessionStorage.getItem('ytdl_token') || '';
+  let selectedFmt = 'best';
+
+  if (ACCESS_TOKEN) tryUnlock(ACCESS_TOKEN, true);
+
+  document.getElementById('tokenInput').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+
+  function unlock() { tryUnlock(document.getElementById('tokenInput').value.trim(), false); }
+
+  function tryUnlock(token, silent) {
+    fetch('/check', { headers: { 'X-Access-Token': token } })
+      .then(r => { if (r.status === 401) throw new Error('bad token'); return r.json(); })
+      .then(() => {
+        ACCESS_TOKEN = token;
+        sessionStorage.setItem('ytdl_token', token);
+        document.getElementById('lockScreen').style.display = 'none';
+        document.getElementById('appScreen').classList.add('visible');
+      })
+      .catch(() => {
+        if (!silent) document.getElementById('lockError').style.display = 'block';
+        else {
+          document.getElementById('lockScreen').style.display = 'none';
+          document.getElementById('appScreen').classList.add('visible');
+        }
+      });
+  }
+
+  function selectFmt(btn) {
+    document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedFmt = btn.dataset.fmt;
+  }
+
+  async function startDownload() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) {
+      const inp = document.getElementById('urlInput');
+      inp.style.borderColor = 'var(--accent2)';
+      inp.focus();
+      setTimeout(() => inp.style.borderColor = '', 1000);
+      return;
+    }
+
+    const btn     = document.getElementById('dlBtn');
+    const terminal = document.getElementById('terminal');
+    const termBody = document.getElementById('termBody');
+    const badge    = document.getElementById('statusBadge');
+    const dlReady  = document.getElementById('dlReady');
+
+    btn.disabled = true;
+    btn.textContent = '⏳  Starting...';
+    terminal.classList.add('visible');
+    dlReady.classList.remove('visible');
+    termBody.innerHTML = '<span class="cursor"></span>';
+    badge.className = 'status-badge running';
+    badge.textContent = 'RUNNING';
+
+    try {
+      const res = await fetch('/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Access-Token': ACCESS_TOKEN },
+        body: JSON.stringify({ url, format: selectedFmt })
+      });
+
+      const { id, error } = await res.json();
+
+      if (error) {
+        appendLine('ERROR: ' + error, 'err');
+        badge.className = 'status-badge error';
+        badge.textContent = 'ERROR';
+        btn.disabled = false;
+        btn.textContent = '▶  Download';
+        return;
+      }
+
+      const evtSource = new EventSource(`/status/${id}?token=${ACCESS_TOKEN}`);
+
+      evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+
+        if (data.line) {
+          const cls = data.line.includes('[download]') ? 'progress'
+                    : data.line.startsWith('ERROR')    ? 'err'
+                    : data.line.includes('✓')          ? 'success'
+                    : '';
+          appendLine(data.line, cls);
+        }
+
+        if (data.done) {
+          evtSource.close();
+          badge.className = `status-badge ${data.status}`;
+          badge.textContent = data.status === 'done' ? 'DONE ✓' : 'ERROR';
+          btn.disabled = false;
+          btn.textContent = '▶  Download';
+          document.getElementById('urlInput').value = '';
+
+          if (data.status === 'done' && data.dl_id) {
+            const fileUrl = `/file/${data.dl_id}?token=${ACCESS_TOKEN}`;
+            document.getElementById('dlFilename').textContent = data.filename || 'your file';
+            document.getElementById('dlLink').href = fileUrl;
+            dlReady.classList.add('visible');
+          }
+        }
+      };
+
+      evtSource.onerror = () => {
+        evtSource.close();
+        appendLine('Connection lost.', 'err');
+        btn.disabled = false;
+        btn.textContent = '▶  Download';
+      };
+
+    } catch (err) {
+      appendLine('Cannot reach server: ' + err.message, 'err');
+      btn.disabled = false;
+      btn.textContent = '▶  Download';
+    }
+  }
+
+  function appendLine(text, cls = '') {
+    const termBody = document.getElementById('termBody');
+    const cursor = termBody.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    const div = document.createElement('div');
+    div.className = 'log-line' + (cls ? ' ' + cls : '');
+    div.textContent = text;
+    termBody.appendChild(div);
+    termBody.scrollTop = termBody.scrollHeight;
+  }
+
+  document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') startDownload(); });
+</script>
+</body>
+</html>
